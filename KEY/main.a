@@ -1,0 +1,72 @@
+     ORG  0000H
+          AJMP MAIN
+
+          ORG  0030H
+MAIN: 	  MOV  P1,#0FH ;给列送高电平
+          LCALL DELAY  ;延时，使电路稳定下来
+          MOV  R4,00H
+          MOV  A,P1  ;取P1口的值
+          ANL  A,#0FH  ;屏蔽行线的影响
+          CJNE A,#0FH,L ;如果有键按下，就跳转到L
+DESPLAY:
+          MOV  A,R7
+          MOV  DPTR,#TABLE 
+          MOVC A,@A+DPTR
+          MOV  P0,A 
+          AJMP MAIN 
+
+L:       LCALL DELAY  ;延时去除抖动
+          MOV  A,P1  ;重新取值
+          JB  ACC.3,L1 ;P1.3这一列有键按下？没有则跳转到L1
+          MOV  R3,#00H  ;R3用作记列号
+           AJMP Q1
+
+L1:     JB  ACC.2,L2
+          MOV  R3,#01H
+          AJMP Q1
+
+L2:     JB  ACC.1,L3
+          MOV  R3,#02H
+          AJMP Q1
+
+L3:     JB  ACC.0,MAIN
+           MOV  R3,#03H
+           AJMP Q1
+
+Q1:        MOV  P1,#0F0H  ;给行送高电平
+           LCALL DELAY  ;延时，稳定电路
+           MOV  A,P1  ;取值
+           ANL  A,#0F0H  ;屏蔽高四位
+           JB  ACC.7,Q2 ;判断是不是第0行，不是则转移
+           MOV  R4,#00H  ;如果是，那把0送给R4(R4存行（转换为键号）)
+           AJMP JIA
+
+Q2:     JB  ACC.6,Q3
+        MOV  R4,#04H
+        AJMP JIA
+
+Q3:     JB  ACC.5,Q4
+           MOV  R4,#08H
+           AJMP JIA
+
+Q4:     JB  ACC.4,MAIN
+           MOV  R4,#0CH
+           AJMP JIA
+
+JIA:     MOV  A,R3    ;行号加上列号就是改键的值
+         ADD  A,R4
+         MOV  R7,A  ;调整后放在R7寄存器中
+         AJMP MAIN
+
+DELAY: MOV  R6,#20H  ;仿真时测试延时为13ms
+
+ Q6:       MOV  R5,#0BBH
+           DJNZ R5,$
+           DJNZ R6,Q6
+           RET
+
+//下面为0-f的字形表
+TABLE: DB 3FH,06H,5BH,4FH,66H,6DH,7DH,07H ,7FH,6FH,77H
+       DB 7CH,39H,5EH,79H,71H;
+END  
+//https://github.com/zhangziyu01/80C51
